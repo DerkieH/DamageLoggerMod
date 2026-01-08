@@ -19,6 +19,13 @@ The mod focuses on **clarity for spectators**, **dramatic run endings**, and **l
 
 ## Features
 
+### Compatibility: SharedHealth
+This mod is designed to work well alongside the **SharedHealth** mod (Modrinth project: `sharedhealth`).  
+When both are installed, DamageLogger will still detect the **first real death** and trigger the run fail flow, while SharedHealth can handle the shared health/extra hardcore mechanics you run on the server.
+
+> Note: DamageLogger does not modify SharedHealth settings; it simply coexists and reacts to the resulting deaths/damage events.
+
+
 ### Damage Logging (Chat)
 - Colored damage messages in chat:
   - `[Damage]` – dark gray
