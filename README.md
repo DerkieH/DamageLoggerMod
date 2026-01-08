@@ -1,166 +1,124 @@
-# DamageLogger (Alliantie Hardcore Tools)
+# DamageLogger (Alliantie Hardcore Run Mod)
 
-Een Fabric server-mod die **damage**, **splits (milestones)** en **run-einde events** logt voor hardcore/race runs.
-De mod toont een **actionbar timer**, een **SPLITS sidebar**, bewaart alle runs in **JSON**, en meldt **persoonlijke/beste splits (PB’s)** in de chat.
+DamageLogger is a **Fabric server-side mod** designed for hardcore / speedrun-style Minecraft servers.
+It tracks **damage**, **splits (milestones)**, **run state**, and **end conditions**, while persisting all runs to JSON for later comparison.
 
-> Gericht op servergebruik (dedicated), met minimale log-spam door diff-based scoreboard updates.
+The mod focuses on **clarity for spectators**, **dramatic run endings**, and **low server log spam**.
+
+---
+
+## Core Concepts
+
+- A **run** starts automatically when the server is active.
+- The run ends in one of two ways:
+  - **FAILED** – the first real player death.
+  - **COMPLETED** – the Ender Dragon is killed.
+- All players are treated as part of a single shared run.
 
 ---
 
 ## Features
 
-### Damage logging (chat)
-- Kleur-gecodeerde damage meldingen in de chat:
-  - `[Damage]` donkergrijs
-  - Spelernaam wit
-  - Tekst grijs
-  - Damage + ♥ rood
-- Anti-spam cooldown per damage-source:
-  - Standaard cooldown: ~300ms
-  - DoT (fire/lava/wither/poison/starve/cactus) cooldown: ~1500ms
-- Negeert `genericKill` (bijv. `/kill`), zodat admin acties geen “run death” of spam veroorzaken.
+### Damage Logging (Chat)
+- Colored damage messages in chat:
+  - `[Damage]` – dark gray
+  - Player name – white
+  - Text – gray
+  - Damage value + ♥ – red
+- Anti-spam system:
+  - Per-damage-source cooldown
+  - Longer cooldown for DoT sources (fire, lava, poison, wither, starvation, cactus)
+- Ignores `genericKill` (e.g. `/kill`)
 
-### Damage leaderboard (per run)
-- Houdt bij hoeveel **totaal damage** elke speler deze run heeft gekregen.
-- Bij run-einde: **Top 5 “Most damage taken (this run)”** in de chat (met ♥).
+### Damage Leaderboard (Per Run)
+- Tracks **total damage taken per player** during the run.
+- On run end, broadcasts a **Top 5 “Most damage taken (this run)”** leaderboard in chat.
 
-### Splits / milestones
-- Milestones worden gedetecteerd via advancements (eerste speler die hem haalt “pakt” de split).
-- Bij elke split:
-  - Chatmelding: `⏱ SPLIT <MILESTONE>: <tijd> — <speler>`
-  - Vergelijking met opgeslagen “best split”:
-    - Bij sneller: chatmelding `🏁 NEW PB <MILESTONE>: <tijd> (-<verschil>)`
-- Milestones in deze mod:
-  - `IRON` (story/smelt_iron)
-  - `NETHER` (story/enter_the_nether)
-  - `FORT` (nether/find_fortress)
-  - `BLAZE` (nether/obtain_blaze_rod)
-  - `END` (story/enter_the_end)
-  - `DRAGON` (end/kill_dragon)
+### Splits / Milestones
+Milestones are detected via advancements.
+The **first player** to complete an advancement claims the split.
 
-### Sidebar scoreboard: SPLITS
-- Sidebar objective: `alliance_splits` met title `SPLITS`.
-- Toont behaalde splits met tijd.
-- Geen timer in de sidebar (timer staat in de actionbar).
-- **Diff-based updates**: scoreboard commands worden alleen uitgevoerd als een regel echt verandert → minder logspam.
+Milestones:
+- `IRON` – Smelt Iron
+- `NETHER` – Enter the Nether
+- `FORT` – Find a Nether Fortress
+- `BLAZE` – Obtain Blaze Rod
+- `END` – Enter the End
+- `DRAGON` – Kill the Ender Dragon
 
-### Actionbar timer
-- Tijdens run: toont alleen tijd `00:00:00`.
-- Na fail: `RUN FAILED — 00:00:00`
-- Na completion: `RUN COMPLETED — 00:00:00`
+#### Split Chat Messages
+- Always announced with delta vs best run:
+```
+⏱ SPLIT IRON: 00:02:10 (+00:00:07) — PlayerName
+```
+- Faster than best:
+```
+🏁 NEW PB IRON: 00:02:03 (-00:00:05)
+```
 
-### Run einde: FAIL (eerste echte death)
-- Triggert op de **eerste echte player death** (excl. `genericKill`).
-- Zet **iedereen** in **Spectator**.
-- Stuurt “dramatische” end-run info in chat:
-  - Speler
-  - Coords
-  - Dimension
-  - Cause/type
-- **5 seconden pin**: spelers worden “vastgehouden” rond de death-locatie (teleport terug bij bewegen / verkeerde dimension).
+### Sidebar Scoreboard (SPLITS)
+- Objective: `alliance_splits`
+- Always shows **all milestones**
+- Baseline is the best split from stored runs
+- Shows `(+ / −)` delta after completion
+- Diff-based updates (minimal log spam)
+- No timer in sidebar
 
-### Run einde: SUCCESS (DRAGON)
-- Als `DRAGON` split wordt gehaald:
-  - Run eindigt als **COMPLETED**
-  - Chatmelding met eindtijd + speler
-  - **Geen spectator / geen pin**
-  - Voorkomt dat een latere death de run alsnog als FAIL markeert.
+### Actionbar Timer
+- During run: `00:00:00`
+- On fail: `RUN FAILED — 00:00:00`
+- On completion: `RUN COMPLETED — 00:00:00`
 
-### Persistente opslag (JSON)
-- Alle runs worden opgeslagen in:
-  - `/opt/minecraft/server/splits/runs.json`
-- Best splits worden gelezen uit dezelfde JSON bij server start/first join.
+### Run End: FAILED
+- Triggered by the **first real death**
+- Ignores `/kill` and genericKill
+- Forces respawn to bypass hardcore Game Over screen
+- All players switched to **Spectator**
+- All players teleported to death location
+- **5 second pin** at death spot
+- Dramatic broadcast after spectator state
+- Damage leaderboard shown
+- Run saved to JSON
 
-### Gamerule
-- Zet (via server command):
-  - `gamerule doImmediateRespawn true`
-
----
-
-## Installatie
-
-1. Build de mod jar (Gradle):
-   - `gradlew clean build`
-2. Plaats de jar in de server `mods/` map.
-3. Start/restart de server.
-
-> Zorg dat de server user schrijfrechten heeft op:
-> `/opt/minecraft/server/splits/`
+### Run End: COMPLETED
+- Triggered by **Dragon kill**
+- Broadcast completion message
+- No spectator or pin
+- Damage leaderboard shown
+- Run saved to JSON
 
 ---
 
-## Bestanden & opslag
+## Persistence
 
-### JSON locatie
-- Directory: `/opt/minecraft/server/splits/`
-- File: `runs.json`
+All runs are saved to:
 
-### JSON structuur (globaal)
-
-- `version`: integer
-- `runs`: lijst met runs
-- `bestSplits`: map met per milestone de beste tijd
-
-Voorbeeld (ingekort):
-
-```json
-{
-  "version": 1,
-  "runs": [
-    {
-      "runId": "run-1700000000000-1700000123456",
-      "startMs": 1700000000000,
-      "endMs": 1700000123456,
-      "durationMs": 123456,
-      "failed": true,
-      "completed": false,
-      "endReason": "FAILED",
-      "endPlayer": "PlayerName",
-      "splits": {
-        "IRON": { "timeMs": 90000, "player": "PlayerName", "playerUuid": "..." }
-      }
-    }
-  ],
-  "bestSplits": {
-    "IRON": { "timeMs": 85000, "runId": "run-..." }
-  }
-}
+```
+/opt/minecraft/server/splits/runs.json
 ```
 
 ---
 
-## Gebruik
+## Installation
 
-### Tijdens de run
-- Damage logs verschijnen in chat (met kleuren).
-- Actionbar toont de timer.
-- Sidebar toont de behaalde splits.
-- Elke split wordt in chat gemeld; bij PB ook met verschil.
-
-### Einde van de run
-- FAIL: eerste echte death → spectator, pin 5s, dramatische output, leaderboard, run wordt opgeslagen.
-- SUCCESS: DRAGON split → completed message, leaderboard, run wordt opgeslagen.
-
----
-
-## Notes / Troubleshooting
-
-- **Geen chat output?**  
-  De mod gebruikt `PlayerManager.broadcast(...)` voor chat. Als er toch niets verschijnt, check:
-  - server chat settings / permissions
-  - eventuele mods/plugins die chat intercepten
-
-- **runs.json wordt niet geschreven**  
-  Controleer permissions:
-  - `/opt/minecraft/server/splits/` moet bestaan of aan te maken zijn
-  - server user moet schrijf-rechten hebben
-
-- **Scoreboard spam in latest.log**  
-  De mod update diff-based, maar als je nog spam ziet kan je:
-  - command feedback settings checken
-  - server config (log admin commands) nalopen
+1. Build:
+```
+gradlew clean build
+```
+2. Place JAR in `mods/`
+3. Ensure write access to:
+```
+/opt/minecraft/server/splits/
+```
 
 ---
 
-## Licentie
-Nog niet gespecificeerd (voeg hier je licentie toe, bijv. MIT).
+## Notes
+- Server-side only (Fabric)
+- Designed for hardcore race environments
+- Scoreboard updates are diff-based
+
+---
+
+## License
+Not specified.
