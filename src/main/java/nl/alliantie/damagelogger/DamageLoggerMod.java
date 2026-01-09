@@ -152,18 +152,13 @@ public class DamageLoggerMod implements ModInitializer {
                     if (p != null) {
                         tryForceRespawn(server, p);
 
+                        // After respawn, force spectator + teleport via commands (reliable)
                         if (runFailed) {
                             forceSpectatorAndTeleportPlayer(server, p);
                         }
 
-                        // After respawn, ensure spectator + pin location (in case respawn moved them)
-                        ServerWorld targetWorld = server.getWorld(deathWorldKey);
-                        if (targetWorld != null && runFailed) {
-                            try {
-                                p.changeGameMode(GameMode.SPECTATOR);
-                            } catch (Throwable ignored) {}
-                            tryTeleport(p, targetWorld, deathX, deathY, deathZ);
-                        }
+                        // ❌ Removed: duplicate changeGameMode + API teleport
+                        // (forceSpectatorAndTeleportPlayer already does this reliably)
                     }
                     PENDING_FORCE_RESPAWN.remove(id);
                 }
@@ -264,26 +259,12 @@ public class DamageLoggerMod implements ModInitializer {
             // queue forced respawn for the dead player (hardcore Game Over fix)
             PENDING_FORCE_RESPAWN.add(player.getUuid());
 
-            // everyone spectator (met command fallback)
-            boolean anyFailed = false;
-            for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
-                try {
-                    p.changeGameMode(GameMode.SPECTATOR);
-                } catch (Throwable ignored) {
-                    anyFailed = true;
-                }
-            }
-            if (anyFailed) {
-                runCommand(server, "gamemode spectator @a");
-            }
+            // Direct force spectator + teleport everyone (command-based, reliable)
+            forceSpectatorAndTeleportAll(server);
 
-            // direct teleport iedereen naar de death locatie (niet wachten op pin-loop)
-            ServerWorld targetWorld = server.getWorld(deathWorldKey);
-            if (targetWorld != null) {
-                for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
-                    tryTeleport(p, targetWorld, deathX, deathY, deathZ);
-                }
-            }
+            // NOW broadcast (after spectator+tp)
+            broadcastEndRunFailed(server, player, world, source, describeDamageType(source));
+
 
             broadcastEndRunFailed(server, player, world, source, describeDamageType(source));
             broadcastDamageLeaderboard(server);
