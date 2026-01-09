@@ -152,14 +152,13 @@ public class DamageLoggerMod implements ModInitializer {
                     if (p != null) {
                         tryForceRespawn(server, p);
 
-                        // After respawn, ensure spectator + pin location (in case respawn moved them)
-                        ServerWorld targetWorld = server.getWorld(deathWorldKey);
-                        if (targetWorld != null && runFailed) {
-                            try {
-                                p.changeGameMode(GameMode.SPECTATOR);
-                            } catch (Throwable ignored) {}
-                            tryTeleport(p, targetWorld, deathX, deathY, deathZ);
+                        // After respawn, force spectator + teleport via commands (reliable)
+                        if (runFailed) {
+                            forceSpectatorAndTeleportPlayer(server, p);
                         }
+
+                        // Removed: duplicate changeGameMode + API teleport
+                        // (forceSpectatorAndTeleportPlayer already does this reliably)
                     }
                     PENDING_FORCE_RESPAWN.remove(id);
                 }
@@ -260,26 +259,12 @@ public class DamageLoggerMod implements ModInitializer {
             // queue forced respawn for the dead player (hardcore Game Over fix)
             PENDING_FORCE_RESPAWN.add(player.getUuid());
 
-            // everyone spectator (met command fallback)
-            boolean anyFailed = false;
-            for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
-                try {
-                    p.changeGameMode(GameMode.SPECTATOR);
-                } catch (Throwable ignored) {
-                    anyFailed = true;
-                }
-            }
-            if (anyFailed) {
-                runCommand(server, "gamemode spectator @a");
-            }
+            // Direct force spectator + teleport everyone (command-based, reliable)
+            forceSpectatorAndTeleportAll(server);
 
-            // direct teleport iedereen naar de death locatie (niet wachten op pin-loop)
-            ServerWorld targetWorld = server.getWorld(deathWorldKey);
-            if (targetWorld != null) {
-                for (ServerPlayerEntity p : server.getPlayerManager().getPlayerList()) {
-                    tryTeleport(p, targetWorld, deathX, deathY, deathZ);
-                }
-            }
+            // NOW broadcast (after spectator+tp)
+            broadcastEndRunFailed(server, player, world, source, describeDamageType(source));
+
 
             broadcastEndRunFailed(server, player, world, source, describeDamageType(source));
             broadcastDamageLeaderboard(server);
@@ -978,6 +963,39 @@ public class DamageLoggerMod implements ModInitializer {
 
     private static String safeLower(String s) {
         return s == null ? "" : s.toLowerCase(Locale.ROOT);
+    }
+
+    // ------------------------------------------------------------
+    // FORCE SPECTATOR AND TELEPORT ALL
+    // ------------------------------------------------------------
+
+    private static void forceSpectatorAndTeleportAll(MinecraftServer server) {
+        if (deathWorldKey == null) return;
+
+        String dim = deathWorldKey.getValue().toString(); // e.g. "minecraft:overworld"
+        int x = (int) Math.floor(deathX);
+        int y = (int) Math.floor(deathY + 0.2);
+        int z = (int) Math.floor(deathZ);
+
+        // Force spectator (reliable)
+        runCommand(server, "gamemode spectator @a");
+
+        // Teleport everyone in the correct dimension context (reliable cross-dimension)
+        runCommand(server, "execute in " + dim + " run tp @a " + x + " " + y + " " + z);
+    }
+
+    private static void forceSpectatorAndTeleportPlayer(MinecraftServer server, ServerPlayerEntity p) {
+        if (deathWorldKey == null || p == null) return;
+
+        String dim = deathWorldKey.getValue().toString();
+        int x = (int) Math.floor(deathX);
+        int y = (int) Math.floor(deathY + 0.2);
+        int z = (int) Math.floor(deathZ);
+
+        String name = p.getName().getString(); // no spaces in MC names
+
+        runCommand(server, "gamemode spectator " + name);
+        runCommand(server, "execute in " + dim + " run tp " + name + " " + x + " " + y + " " + z);
     }
 
     // ------------------------------------------------------------
