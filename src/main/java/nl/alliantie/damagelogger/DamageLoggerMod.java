@@ -1029,3 +1029,4 @@ public class DamageLoggerMod implements ModInitializer {
         chat(server, Text.literal(" ").formatted(Formatting.DARK_GRAY));
     }
 }
+// New build
