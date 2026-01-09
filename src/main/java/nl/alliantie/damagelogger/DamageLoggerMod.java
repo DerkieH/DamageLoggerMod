@@ -157,7 +157,7 @@ public class DamageLoggerMod implements ModInitializer {
                             forceSpectatorAndTeleportPlayer(server, p);
                         }
 
-                        // ❌ Removed: duplicate changeGameMode + API teleport
+                        // Removed: duplicate changeGameMode + API teleport
                         // (forceSpectatorAndTeleportPlayer already does this reliably)
                     }
                     PENDING_FORCE_RESPAWN.remove(id);
