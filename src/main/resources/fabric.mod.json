@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "damage_logger",
-  "version": "1.3.7",
+  "version": "1.3.9",
   "name": "Damage Logger",
   "description": "Logt damage per speler in de chat.",
   "authors": ["De Alliantie"],
