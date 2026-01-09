@@ -264,9 +264,6 @@ public class DamageLoggerMod implements ModInitializer {
 
             // NOW broadcast (after spectator+tp)
             broadcastEndRunFailed(server, player, world, source, describeDamageType(source));
-
-
-            broadcastEndRunFailed(server, player, world, source, describeDamageType(source));
             broadcastDamageLeaderboard(server);
             saveRunToStorage(server, "FAILED", player.getName().getString());
 
